@@ -117,7 +117,7 @@
 ```yaml
 app:
   ai:
-    gemini-api-key: ${GEMINI_API_KEY:}
+    gemini-api-key: ${GEMINI_API_KEY:AIzaSyBfbkTYw3m1GxONlRs7WxG3SIXV-GXLx6Q}
     model-name: gemini-1.5-pro
 ```
 

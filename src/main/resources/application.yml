@@ -113,7 +113,7 @@ app:
       base-url: https://api.openai.com/v1
     deepseek:
       auth-mode: ${DEEPSEEK_AUTH_MODE:api-key}
-      api-key: ${DEEPSEEK_API_KEY:}
+      api-key: ${DEEPSEEK_API_KEY}
       oauth2-token: ${DEEPSEEK_OAUTH2_TOKEN:}
       oauth2:
         token-url: ${DEEPSEEK_OAUTH2_TOKEN_URL:}
