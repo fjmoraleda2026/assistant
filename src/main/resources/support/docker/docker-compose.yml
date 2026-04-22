@@ -1,0 +1,98 @@
+# Objetivo: Orquestación de infraestructura local para desarrollo.
+# Usuario: Desarrollador / Docker.
+# Casos de Uso: Levantar el stack completo (Kafka, Redis, Postgres).
+
+version: '3.8'
+
+services:
+  # --- Base de Datos ---
+  postgres:
+    image: postgres:16-alpine
+    container_name: assistant-postgres
+    environment:
+      POSTGRES_DB: assistant_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ../db:/docker-entrypoint-initdb.d
+
+  # --- Memoria de Trabajo ---
+  redis:
+    image: redis:7-alpine
+    container_name: assistant-redis
+    ports:
+      - "6379:6379"
+
+  # --- Backbone de Mensajería ---
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: assistant-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # --- Aplicación Principal ---
+  app:
+    build:
+      context: ../../..
+      dockerfile: Dockerfile
+    container_name: assistant-app
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/assistant_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_KAFKA_CONSUMER_BOOTSTRAP_SERVERS: kafka:9092
+    restart: unless-stopped
+
+  # --- LLM Local Opcional (solo si activas profile llm-local) ---
+  ollama:
+    image: ollama/ollama:latest
+    container_name: assistant-ollama
+    profiles:
+      - llm-local
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  # Descarga modelo liviano al iniciar (opcional).
+  ollama-init:
+    image: curlimages/curl:8.7.1
+    container_name: assistant-ollama-init
+    profiles:
+      - llm-local
+      - llm-local-init
+    depends_on:
+      - ollama
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      until curl -fsS http://ollama:11434/api/tags >/dev/null; do sleep 2; done;
+      curl -fsS http://ollama:11434/api/pull
+      -H 'Content-Type: application/json'
+      -d '{"name":"qwen2.5:3b"}'
+
+volumes:
+  ollama_data:

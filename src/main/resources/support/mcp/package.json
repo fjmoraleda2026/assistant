@@ -1,0 +1,8 @@
+{
+  "name": "assistant-mcp-servers",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "latest"
+  }
+}

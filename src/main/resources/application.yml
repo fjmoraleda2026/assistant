@@ -1,0 +1,156 @@
+# ==============================================================================
+# Objetivo: Configuración central de infraestructura (Kafka, Redis, Postgres, IA).
+# Usuario: Spring Boot Runtime / Administrador de Sistemas.
+# Casos de Uso: Inicialización del contexto de la aplicación y conectividad.
+# ==============================================================================
+
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: assistant-core-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/assistant_pro
+    username: user_admin
+    password: ${DB_PASS:}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  ai:
+    openai:
+      api-key: ${GEMINI_API_KEY:}
+      base-url: https://generativelanguage.googleapis.com/v1beta/openai
+      chat:
+        options:
+          model: ${GEMINI_MODEL:gemini-2.0-flash}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVERS:localhost:9092}
+    consumer:
+      group-id: assistant-main-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.assistant.domain.dto.ChatEvent
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,prometheus,metrics"
+
+app:
+  ai:
+    provider: grock  # mock | gemini | grok | chatgpt | deepseek | ollama
+    model: llama-3.1-8b-instant # gemini-2.0-flash | gpt-4o-mini | deepseek-chat | qwen2.5:3b
+    default-models:
+      gemini: "gemini-1.5-flash"
+      grok: "llama-3.1-8b-instant"
+      chatgpt: "gpt-4o-mini"
+      deepseek: "deepseek-chat"
+      ollama: "qwen2.5:3b"
+      mock: "mock-default"
+    allowed-models:
+      gemini: "gemini-2.0-flash,gemini-2.0-flash-lite,gemini-1.5-pro,gemini-1.5-flash"
+      grok: "llama-3.1-8b-instant,llama-3.3-70b-versatile,grok-beta"
+      chatgpt: "gpt-4o-mini,gpt-4o,o3-mini"
+      deepseek: "deepseek-chat,deepseek-reasoner"
+      ollama: "qwen2.5:3b,qwen2.5:7b,qwen2.5:1.5b,llama3.1:8b"
+      mock: ""
+    gemini:
+      auth-mode: ${GEMINI_AUTH_MODE:api-key} # api-key | oauth2
+      api-key: ${GEMINI_API_KEY:}
+      oauth2-token: ${GEMINI_OAUTH2_TOKEN:} # opcional: si viene, se usa directo
+      oauth2:
+        token-url: ${GEMINI_OAUTH2_TOKEN_URL:}
+        client-id: ${GEMINI_OAUTH2_CLIENT_ID:}
+        client-secret: ${GEMINI_OAUTH2_CLIENT_SECRET:}
+        scope: ${GEMINI_OAUTH2_SCOPE:}
+        audience: ${GEMINI_OAUTH2_AUDIENCE:}
+      base-url: https://generativelanguage.googleapis.com/v1beta/openai
+    grok:
+      auth-mode: ${GROK_AUTH_MODE:api-key} # api-key | oauth2
+      api-key: ${GROQ_API_KEY:}
+      oauth2-token: ${GROK_OAUTH2_TOKEN:} # opcional: si viene, se usa directo
+      oauth2:
+        token-url: ${GROK_OAUTH2_TOKEN_URL:}
+        client-id: ${GROK_OAUTH2_CLIENT_ID:}
+        client-secret: ${GROK_OAUTH2_CLIENT_SECRET:}
+        scope: ${GROK_OAUTH2_SCOPE:}
+        audience: ${GROK_OAUTH2_AUDIENCE:}
+      base-url: https://api.groq.com/openai/v1
+    chatgpt:
+      auth-mode: ${CHATGPT_AUTH_MODE:api-key} # api-key | oauth2
+      api-key: ${OPENAI_API_KEY:}
+      oauth2-token: ${CHATGPT_OAUTH2_TOKEN:} # opcional: si viene, se usa directo
+      oauth2:
+        token-url: ${CHATGPT_OAUTH2_TOKEN_URL:}
+        client-id: ${CHATGPT_OAUTH2_CLIENT_ID:}
+        client-secret: ${CHATGPT_OAUTH2_CLIENT_SECRET:}
+        scope: ${CHATGPT_OAUTH2_SCOPE:}
+        audience: ${CHATGPT_OAUTH2_AUDIENCE:}
+      base-url: https://api.openai.com/v1
+    deepseek:
+      auth-mode: ${DEEPSEEK_AUTH_MODE:api-key}
+      api-key: ${DEEPSEEK_API_KEY:}
+      oauth2-token: ${DEEPSEEK_OAUTH2_TOKEN:}
+      oauth2:
+        token-url: ${DEEPSEEK_OAUTH2_TOKEN_URL:}
+        client-id: ${DEEPSEEK_OAUTH2_CLIENT_ID:}
+        client-secret: ${DEEPSEEK_OAUTH2_CLIENT_SECRET:}
+        scope: ${DEEPSEEK_OAUTH2_SCOPE:}
+        audience: ${DEEPSEEK_OAUTH2_AUDIENCE:}
+      base-url: https://api.deepseek.com/v1
+    ollama:
+      auth-mode: api-key
+      api-key: ${OLLAMA_API_KEY:ollama}
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434/v1}
+  kafka:
+    inbound-topic: telegram-inbound
+    outbound-topic: telegram-outbound
+  telegram:
+    bot-username: ${TELEGRAM_BOT_USERNAME:Jmp_hal_bot}
+    bot-token: ${TELEGRAM_BOT_TOKEN:}
+    allowed-chat-ids: "8448893815"
+    webhook-path: /api/telegram/webhook
+  mcp:
+    enabled: true
+    max-iterations: 2
+    max-tool-calls: 2
+    tool-timeout-ms: 4000
+    max-calls-per-hour: 10
+    allowed-tools: "filesystem.read,filesystem.write,filesystem.list,postgres.query,postgres.describe"
+    filesystem:
+      base-path: ${MCP_FILESYSTEM_BASE_PATH:C:\Proyectos\GeminiCLI\java-assistant}
+    postgres:
+      max-rows: 50
+  memory:
+    redis-threshold: 20
+    summarization-batch: 10
+    overlap-size: 5  # Mensajes que permanecen en Redis tras la limpieza
+    fact-ai-extraction:
+      enabled: true
+      min-prompt-length: 25
+      max-prompt-length: 1200
+      skip-if-heuristic-count: 1  # Omitir llamada IA si la heuristica ya extrajo >= N candidatos
